@@ -32,11 +32,9 @@ void initGu(){
     sceGuEnable(GU_SCISSOR_TEST);
     sceGuScissor(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    //Set some stuff
-    sceGuDepthRange(65535, 0); //Use the full buffer for depth testing - buffer is reversed order
-
-    sceGuDepthFunc(GU_GEQUAL); //Depth buffer is reversed, so GEQUAL instead of LEQUAL
-    sceGuEnable(GU_DEPTH_TEST); //Enable depth testing
+    sceGuDepthRange(0, 65535);
+    sceGuDepthFunc(GU_ALWAYS); // Disable depth testing
+    sceGuDisable(GU_DEPTH_TEST); // Disable depth testing
 
     sceGuFinish();
     sceGuDisplay(GU_TRUE);
@@ -49,7 +47,7 @@ void endGu(){
 
 void startFrame(){
     sceGuStart(GU_DIRECT, list);
-    sceGuClearColor(0xFF000000); // White background
+    sceGuClearColor(0xFF1BC507); // Green background
     sceGuClear(GU_COLOR_BUFFER_BIT);
 }
 
@@ -75,7 +73,7 @@ void drawSnakeHead(float x, float y, float w, float h) {
     vertices[1].x = x + w;
     vertices[1].y = y + h;
 
-    sceGuColor(0xFF0000FF); // Red, colors are ABGR
+    sceGuColor(0xFF0000FF); // Red, color
     sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, 0, vertices);
 }
 
@@ -89,7 +87,7 @@ void drawFood(float x, float y, float size) {
     vertices[1].x = x + size;
     vertices[1].y = y + size;
 
-    sceGuColor(0x00FF00FF);  // Green, colors are ABGR
+    sceGuColor(0xFF00FFFF);  // Pink, color1BC507
     sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, 0, vertices);
 }
 

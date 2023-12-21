@@ -2,6 +2,7 @@
 #include <pspgu.h>
 #include <pspctrl.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 
 PSP_MODULE_INFO("snake", 0, 1, 0);
@@ -12,7 +13,7 @@ PSP_MAIN_THREAD_ATTR(THREAD_ATTR_VFPU | THREAD_ATTR_USER);
 #define BUFFER_HEIGHT 272
 #define SCREEN_WIDTH 480
 #define SCREEN_HEIGHT BUFFER_HEIGHT
-#define MOVE_SPEED 1.0f
+#define MOVE_SPEED 2.0f
 
 char list[0x20000] __attribute__((aligned(64)));
 
@@ -48,7 +49,7 @@ void endGu(){
 
 void startFrame(){
     sceGuStart(GU_DIRECT, list);
-    sceGuClearColor(0xFFFFFFFF); // White background
+    sceGuClearColor(0xFF000000); // White background
     sceGuClear(GU_COLOR_BUFFER_BIT);
 }
 
@@ -77,6 +78,21 @@ void drawSnakeHead(float x, float y, float w, float h) {
     sceGuColor(0xFF0000FF); // Red, colors are ABGR
     sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, 0, vertices);
 }
+
+void drawFood(float x, float y, float size) {
+
+    Vertex* vertices = (struct Vertex*)sceGuGetMemory(2 * sizeof(Vertex));
+
+    vertices[0].x = x;
+    vertices[0].y = y;
+
+    vertices[1].x = x + size;
+    vertices[1].y = y + size;
+
+    sceGuColor(0x00FF00FF);  // Green, colors are ABGR
+    sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, 0, vertices);
+}
+
 int exit_callback(int arg1, int arg2, void *common)
 {
     sceKernelExitGame();
@@ -100,83 +116,125 @@ int setup_callbacks(void)
     return thid;
 }
 
-
+float getRandomFloat(float min, float max) {
+    return min + ((float)rand() / RAND_MAX) * (max - min);
+}
 
 int main() {
-
     setup_callbacks();
 
-    //controls
+    // Controls
     sceCtrlSetSamplingCycle(0);
     sceCtrlSetSamplingMode(PSP_CTRL_MODE_ANALOG);
     struct SceCtrlData ctrlData;
 
     initGu();
-    
+
     // Initial position of the snake head
     float rectX = 32.0f;
     float rectY = 32.0f;
-    float rectWidth = 32.0f;
-    float rectHeight = 32.0f;
+    float rectWidth = 30.0f;
+    float rectHeight = 30.0f;
 
-    //snake direction
-    bool snakeDown = true;//starting point down
+    // Snake direction
+    bool snakeDown = true; // Starting point down
     bool snakeUp = false;
     bool snakeLeft = false;
     bool snakeRight = false;
 
-    while(1){
+    // Food variables
+    float foodX = 100.0f;
+    float foodY = 150.0f;
+    float foodSize = 15.0f;
+    bool foodAvailable = true;
 
+    while (1) {
         // Read controller input
         sceCtrlReadBufferPositive(&ctrlData, 1);
 
-        // Update the snake head directrion
+        // Update the snake head direction
         if (ctrlData.Buttons & PSP_CTRL_LEFT) {
-            snakeLeft = true;
-            snakeUp = false;
-            snakeDown = false;
-            snakeRight = false;
+            if (snakeRight != true) {
+                snakeLeft = true;
+                snakeUp = false;
+                snakeDown = false;
+                snakeRight = false;
+            }
         }
         if (ctrlData.Buttons & PSP_CTRL_RIGHT) {
-            snakeLeft = false;
-            snakeUp = false;
-            snakeDown = false;
-            snakeRight = true;
+            if (snakeLeft != true) {
+                snakeLeft = false;
+                snakeUp = false;
+                snakeDown = false;
+                snakeRight = true;
+            }
         }
         if (ctrlData.Buttons & PSP_CTRL_UP) {
-            snakeLeft = false;
-            snakeUp = true;
-            snakeDown = false;
-            snakeRight = false;
+            if (snakeDown != true) {
+                snakeLeft = false;
+                snakeUp = true;
+                snakeDown = false;
+                snakeRight = false;
+            }
         }
         if (ctrlData.Buttons & PSP_CTRL_DOWN) {
-            snakeLeft = false;
-            snakeUp = false;
-            snakeDown = true;
-            snakeRight = false;
+            if (snakeUp != true) {
+                snakeLeft = false;
+                snakeUp = false;
+                snakeDown = true;
+                snakeRight = false;
+            }
         }
 
-        //snake movement
-        if(snakeDown == true){
+        // Snake draw
+        if (snakeDown == true) {
             rectY += MOVE_SPEED;
         }
-        if(snakeLeft == true){
+        if (snakeLeft == true) {
             rectX -= MOVE_SPEED;
         }
-        if(snakeRight == true){
+        if (snakeRight == true) {
             rectX += MOVE_SPEED;
-
         }
-        if(snakeUp == true){
+        if (snakeUp == true) {
             rectY -= MOVE_SPEED;
         }
-
 
         startFrame();
         // Draw the rectangle at the updated position
         drawSnakeHead(rectX, rectY, rectWidth, rectHeight);
+
+        if (rectX < foodX + foodSize && rectX + rectWidth > foodX &&
+            rectY < foodY + foodSize && rectY + rectHeight > foodY) {
+            // Snake ate the food, update the position
+            foodAvailable = false;
+
+            // Reposition the food to a new random location
+            do {
+                foodX = getRandomFloat(0.0f, SCREEN_WIDTH - foodSize);
+                foodY = getRandomFloat(0.0f, SCREEN_HEIGHT - foodSize);
+            } while (
+                // Check if the new food position is inside the snake
+                (foodX >= rectX && foodX <= rectX + rectWidth &&
+                 foodY >= rectY && foodY <= rectY + rectHeight)
+            );
+
+            // Increase the size of the snake or update the score as needed
+            // (you can add your scoring logic here)
+        }
+        if (!foodAvailable) {
+            foodAvailable = true;
+        }
+
+        if (foodAvailable) {
+            
+            drawFood(foodX, foodY, foodSize);
+        }
+
         endFrame();
     }
 
     return 0;
 }
+
+
